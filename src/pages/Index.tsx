@@ -8,10 +8,20 @@ import { toast } from "sonner";
 
 const Index = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [splitterFile, setSplitterFile] = useState<File | null>(null);
+  const [mergerFiles, setMergerFiles] = useState<File[]>([]);
   const [activeTool, setActiveTool] = useState<ToolType>(null);
 
   const handleFileUpload = (file: File) => {
     setPdfFile(file);
+  };
+
+  const handleSplitterUpload = (file: File) => {
+    setSplitterFile(file);
+  };
+
+  const handleMergerUpload = (file: File) => {
+    setMergerFiles((prev) => [...prev, file]);
   };
 
   const handleDownload = () => {
@@ -52,13 +62,19 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="splitter" className="space-y-6">
-            <div className="bg-card rounded-lg shadow-elegant p-8">
-              <h2 className="text-2xl font-bold text-foreground mb-4">PDF Splitter</h2>
-              <p className="text-muted-foreground mb-6">
-                Upload a PDF and select pages to keep. Remove unwanted pages easily.
-              </p>
-              <PDFUploader onFileUpload={handleFileUpload} />
-            </div>
+            {!splitterFile ? (
+              <div className="bg-card rounded-lg shadow-elegant p-8">
+                <h2 className="text-2xl font-bold text-foreground mb-4">PDF Splitter</h2>
+                <p className="text-muted-foreground mb-6">
+                  Upload a PDF and select pages to keep. Remove unwanted pages easily.
+                </p>
+                <PDFUploader onFileUpload={handleSplitterUpload} />
+              </div>
+            ) : (
+              <div className="bg-card rounded-lg shadow-elegant p-6 min-h-[600px]">
+                <PDFViewer file={splitterFile} />
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="merger" className="space-y-6">
@@ -67,7 +83,17 @@ const Index = () => {
               <p className="text-muted-foreground mb-6">
                 Upload multiple PDFs and merge them into a single document.
               </p>
-              <PDFUploader onFileUpload={handleFileUpload} multiple />
+              <PDFUploader onFileUpload={handleMergerUpload} multiple />
+              {mergerFiles.length > 0 && (
+                <div className="mt-6 space-y-4">
+                  {mergerFiles.map((file, index) => (
+                    <div key={index} className="bg-card rounded-lg shadow-elegant p-6">
+                      <h3 className="text-lg font-semibold mb-4">{file.name}</h3>
+                      <PDFViewer file={file} />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>
