@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Header } from "@/components/Header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PDFUploader } from "@/components/PDFUploader";
-import { PDFViewer } from "@/components/PDFViewer";
+import { PDFViewer, PDFViewerHandle } from "@/components/PDFViewer";
 import { Toolbar, ToolType } from "@/components/Toolbar";
 import { toast } from "sonner";
+import { Splitter } from "@/components/Splitter";
+import { Merger } from "@/components/Merger";
 
 const Index = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -55,7 +57,7 @@ const Index = () => {
                   onDownload={handleDownload}
                 />
                 <div className="bg-card rounded-lg shadow-elegant p-6 min-h-[600px]">
-                  <PDFViewer file={pdfFile} />
+                  <PDFViewer ref={viewerRef} file={pdfFile} activeTool={activeTool} />
                 </div>
               </>
             )}
@@ -71,8 +73,8 @@ const Index = () => {
                 <PDFUploader onFileUpload={handleSplitterUpload} />
               </div>
             ) : (
-              <div className="bg-card rounded-lg shadow-elegant p-6 min-h-[600px]">
-                <PDFViewer file={splitterFile} />
+              <div className="bg-card rounded-lg shadow-elegant p-6">
+                <Splitter file={splitterFile} />
               </div>
             )}
           </TabsContent>
@@ -85,13 +87,8 @@ const Index = () => {
               </p>
               <PDFUploader onFileUpload={handleMergerUpload} multiple />
               {mergerFiles.length > 0 && (
-                <div className="mt-6 space-y-4">
-                  {mergerFiles.map((file, index) => (
-                    <div key={index} className="bg-card rounded-lg shadow-elegant p-6">
-                      <h3 className="text-lg font-semibold mb-4">{file.name}</h3>
-                      <PDFViewer file={file} />
-                    </div>
-                  ))}
+                <div className="mt-6">
+                  <Merger files={mergerFiles} onReorder={setMergerFiles} />
                 </div>
               )}
             </div>
