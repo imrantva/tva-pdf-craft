@@ -22,6 +22,7 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [pdfDoc, setPdfDoc] = useState<any>(null);
+  const [canvasReady, setCanvasReady] = useState(0);
   const baseCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const fabricRef = useRef<FabricCanvas | null>(null);
@@ -101,31 +102,49 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       await page.render({ canvasContext: context, viewport, canvas }).promise;
-      // sync overlay size
+      // sync overlay size and reinit fabric
       if (overlayRef.current) {
         overlayRef.current.width = viewport.width;
         overlayRef.current.height = viewport.height;
-      }
-      // init fabric if needed
-      if (!fabricRef.current && overlayRef.current) {
-        fabricRef.current = new FabricCanvas(overlayRef.current, { selection: true });
+        
+        // Dispose and recreate Fabric canvas on dimension change
+        if (fabricRef.current) {
+          fabricRef.current.dispose();
+          fabricRef.current = null;
+        }
+        
+        // Create new Fabric canvas
+        fabricRef.current = new FabricCanvas(overlayRef.current, { 
+          selection: true,
+          width: viewport.width,
+          height: viewport.height
+        });
       }
       // load saved JSON for this page
       if (fabricRef.current) {
         const json = pageJSON.current.get(currentPage);
         if (json) {
           fabricRef.current.loadFromJSON(json, () => fabricRef.current!.renderAll());
-        } else {
-          fabricRef.current.clear();
         }
         // Initialize brush properties if available
         if (fabricRef.current.freeDrawingBrush) {
           fabricRef.current.freeDrawingBrush.width = lineWidth;
           fabricRef.current.freeDrawingBrush.color = activeTool === "eraser" ? "#ffffff" : activeColor;
         }
+        
+        // Trigger canvas ready to apply tool behavior
+        setCanvasReady(prev => prev + 1);
       }
     };
     renderPage();
+    
+    return () => {
+      // Cleanup on unmount
+      if (fabricRef.current) {
+        fabricRef.current.dispose();
+        fabricRef.current = null;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdfDoc, currentPage]);
 
@@ -197,7 +216,7 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
       sel.set({ fill: activeColor, stroke: activeColor });
       fc.renderAll();
     }
-  }, [activeTool, activeColor, lineWidth, drawMode, fontSize, fontFamily]);
+  }, [activeTool, activeColor, lineWidth, drawMode, fontSize, fontFamily, canvasReady]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -222,9 +241,11 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 bg-muted/20 rounded-lg shadow-inner p-4 overflow-auto">
-        <div className="relative max-w-4xl mx-auto bg-background rounded-lg p-2">
-          <canvas ref={baseCanvasRef} className="w-full h-auto block" />
-          <canvas ref={overlayRef} className="absolute inset-0 w-full h-full" />
+        <div className="max-w-4xl mx-auto bg-background rounded-lg p-2">
+          <div className="relative inline-block">
+            <canvas ref={baseCanvasRef} className="block" />
+            <canvas ref={overlayRef} className="absolute top-0 left-0 pointer-events-auto" style={{ zIndex: 1 }} />
+          </div>
 
           {/* Pop-up toolbars */}
           {activeTool === "text" && (

@@ -27,12 +27,20 @@ const Index = () => {
     setMergerFiles((prev) => [...prev, file]);
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!pdfFile) {
       toast.error("No PDF to download");
       return;
     }
-    toast.success("Download functionality will be implemented with pdf-lib");
+    if (viewerRef.current) {
+      try {
+        await viewerRef.current.exportEditedPDF();
+        toast.success("PDF downloaded successfully");
+      } catch (error) {
+        console.error("Download error:", error);
+        toast.error("Failed to download PDF");
+      }
+    }
   };
 
   return (
