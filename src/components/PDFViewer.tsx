@@ -159,64 +159,137 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
   useEffect(() => {
     const fc = fabricRef.current;
     if (!fc) return;
-    // default
+    
+    // Reset all event handlers
+    fc.off("mouse:down");
     fc.isDrawingMode = false;
+    fc.selection = true;
 
     if (activeTool === "draw") {
       if (drawMode === "freehand") {
         fc.isDrawingMode = true;
+        fc.selection = false;
         if (fc.freeDrawingBrush) {
           fc.freeDrawingBrush.color = activeColor;
           fc.freeDrawingBrush.width = lineWidth;
         }
       } else {
         fc.isDrawingMode = false;
-        fc.off("mouse:down");
+        fc.selection = true;
         fc.on("mouse:down", (opt) => {
+          if (opt.target) return; // Don't add if clicking on existing object
           const pointer = fc.getPointer(opt.e);
           let obj: any = null;
           if (drawMode === "rect") {
-            obj = new Rect({ left: pointer.x, top: pointer.y, width: 120, height: 80, fill: "transparent", stroke: activeColor, strokeWidth: lineWidth });
+            obj = new Rect({ 
+              left: pointer.x, 
+              top: pointer.y, 
+              width: 120, 
+              height: 80, 
+              fill: "transparent", 
+              stroke: activeColor, 
+              strokeWidth: lineWidth 
+            });
           } else if (drawMode === "circle") {
-            obj = new Circle({ left: pointer.x, top: pointer.y, radius: 50, fill: "transparent", stroke: activeColor, strokeWidth: lineWidth });
+            obj = new Circle({ 
+              left: pointer.x, 
+              top: pointer.y, 
+              radius: 50, 
+              fill: "transparent", 
+              stroke: activeColor, 
+              strokeWidth: lineWidth 
+            });
           } else if (drawMode === "line") {
-            obj = new Line([pointer.x, pointer.y, pointer.x + 120, pointer.y], { stroke: activeColor, strokeWidth: lineWidth });
+            obj = new Line([pointer.x, pointer.y, pointer.x + 120, pointer.y], { 
+              stroke: activeColor, 
+              strokeWidth: lineWidth 
+            });
           }
-          if (obj) fc.add(obj);
+          if (obj) {
+            fc.add(obj);
+            fc.setActiveObject(obj);
+            fc.renderAll();
+          }
         });
       }
     } else if (activeTool === "text") {
-      fc.off("mouse:down");
+      fc.isDrawingMode = false;
+      fc.selection = true;
       fc.on("mouse:down", (opt) => {
+        if (opt.target) return; // Don't add if clicking on existing object
         const pointer = fc.getPointer(opt.e);
-        const tb = new Textbox("Text", {
+        const tb = new Textbox("Type here", {
           left: pointer.x,
           top: pointer.y,
           fontSize: fontSize,
           fontFamily: fontFamily,
           fill: activeColor,
+          width: 200,
+          editable: true,
         });
         fc.add(tb);
         fc.setActiveObject(tb);
+        tb.enterEditing();
+        fc.renderAll();
       });
     } else if (activeTool === "eraser") {
       fc.isDrawingMode = true;
+      fc.selection = false;
       if (fc.freeDrawingBrush) {
         fc.freeDrawingBrush.color = "#ffffff";
-        fc.freeDrawingBrush.width = Math.max(8, lineWidth * 3);
+        fc.freeDrawingBrush.width = Math.max(12, lineWidth * 4);
+      }
+    } else if (activeTool === "color") {
+      // Color picker mode - update selected object's color
+      fc.isDrawingMode = false;
+      fc.selection = true;
+      const sel = fc.getActiveObject();
+      if (sel) {
+        if (sel.type === "textbox" || sel.type === "text") {
+          sel.set({ fill: activeColor });
+        } else {
+          sel.set({ stroke: activeColor });
+        }
+        fc.renderAll();
       }
     } else {
+      // Default selection mode
       fc.isDrawingMode = false;
-      fc.off("mouse:down");
-    }
-    // apply color to selection
-    const sel = fc.getActiveObject();
-    if (sel) {
-      // @ts-ignore
-      sel.set({ fill: activeColor, stroke: activeColor });
-      fc.renderAll();
+      fc.selection = true;
     }
   }, [activeTool, activeColor, lineWidth, drawMode, fontSize, fontFamily, canvasReady]);
+
+  // Handle color changes for selected objects
+  useEffect(() => {
+    const fc = fabricRef.current;
+    if (!fc || activeTool !== "color") return;
+    
+    const updateSelectedColor = () => {
+      const sel = fc.getActiveObject();
+      if (sel) {
+        if (sel.type === "textbox" || sel.type === "text") {
+          sel.set({ fill: activeColor });
+        } else if (sel.type === "path") {
+          sel.set({ stroke: activeColor });
+        } else {
+          sel.set({ stroke: activeColor });
+        }
+        fc.renderAll();
+      }
+    };
+    
+    // Update immediately
+    updateSelectedColor();
+    
+    // Also listen for selection changes
+    fc.on("selection:created", updateSelectedColor);
+    fc.on("selection:updated", updateSelectedColor);
+    
+    return () => {
+      fc.off("selection:created", updateSelectedColor);
+      fc.off("selection:updated", updateSelectedColor);
+    };
+  }, [activeColor, activeTool, canvasReady]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -244,7 +317,14 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
         <div className="max-w-4xl mx-auto bg-background rounded-lg p-2">
           <div className="relative inline-block">
             <canvas ref={baseCanvasRef} className="block" />
-            <canvas ref={overlayRef} className="absolute top-0 left-0 pointer-events-auto" style={{ zIndex: 1 }} />
+            <canvas 
+              ref={overlayRef} 
+              className="absolute top-0 left-0" 
+              style={{ 
+                zIndex: 1,
+                cursor: activeTool === "draw" ? "crosshair" : activeTool === "text" ? "text" : activeTool === "eraser" ? "cell" : "default"
+              }} 
+            />
           </div>
 
           {/* Pop-up toolbars */}
@@ -275,8 +355,15 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
           )}
 
           {activeTool === "color" && (
-            <div className="absolute top-2 left-2 z-10 flex items-center gap-2 bg-card border border-border rounded px-2 py-1 shadow-sm">
-              <input type="color" value={activeColor} onChange={(e) => setActiveColor(e.target.value)} />
+            <div className="absolute top-2 left-2 z-10 flex items-center gap-2 bg-card border border-border rounded px-3 py-2 shadow-sm">
+              <label className="text-sm font-medium text-foreground">Select Color:</label>
+              <input 
+                type="color" 
+                value={activeColor} 
+                onChange={(e) => setActiveColor(e.target.value)} 
+                className="w-12 h-8 rounded cursor-pointer"
+              />
+              <span className="text-xs text-muted-foreground">Click on text or drawing to apply color</span>
             </div>
           )}
 

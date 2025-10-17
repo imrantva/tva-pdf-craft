@@ -60,6 +60,17 @@ const Index = () => {
               <PDFUploader onFileUpload={handleFileUpload} />
             ) : (
               <>
+                <div className="bg-card rounded-lg shadow-sm p-4 border border-border">
+                  <h3 className="text-sm font-semibold text-foreground mb-2">How to use:</h3>
+                  <ul className="text-xs text-muted-foreground space-y-1">
+                    <li><strong>Text:</strong> Click anywhere on PDF to add text. Drag to move it.</li>
+                    <li><strong>Draw:</strong> Select freehand mode and draw with mouse. Use shapes for rectangles/circles.</li>
+                    <li><strong>Color:</strong> Pick a color, then click on any text or drawing to change its color.</li>
+                    <li><strong>Eraser:</strong> Draw white strokes to erase content.</li>
+                    <li><strong>Image:</strong> Upload an image and place it on the PDF.</li>
+                    <li><strong>Download:</strong> Save your edited PDF with all changes.</li>
+                  </ul>
+                </div>
                 <Toolbar
                   activeTool={activeTool}
                   onToolSelect={setActiveTool}
