@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "./ui/button";
-import { fabric } from "fabric";
+import { Canvas as FabricCanvas, Rect, Circle, Line, Textbox, FabricImage } from "fabric";
 import * as pdfjs from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { PDFDocument } from "pdf-lib";
@@ -24,7 +24,7 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const baseCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
-  const fabricRef = useRef<fabric.Canvas | null>(null);
+  const fabricRef = useRef<FabricCanvas | null>(null);
   const pageJSON = useRef<Map<number, any>>(new Map());
 
   // tool states
@@ -54,7 +54,7 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
         const tempCanvas = document.createElement("canvas");
         tempCanvas.width = viewport.width;
         tempCanvas.height = viewport.height;
-        const fc = new fabric.Canvas(tempCanvas, { selection: false });
+        const fc = new FabricCanvas(tempCanvas, { selection: false });
         await new Promise<void>((resolve) => {
           fc.loadFromJSON(json, () => resolve());
         });
@@ -108,7 +108,7 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
       }
       // init fabric if needed
       if (!fabricRef.current && overlayRef.current) {
-        fabricRef.current = new fabric.Canvas(overlayRef.current, { selection: true });
+        fabricRef.current = new FabricCanvas(overlayRef.current, { selection: true });
       }
       // load saved JSON for this page
       if (fabricRef.current) {
@@ -150,13 +150,13 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
         fc.off("mouse:down");
         fc.on("mouse:down", (opt) => {
           const pointer = fc.getPointer(opt.e);
-          let obj: fabric.Object | null = null;
+          let obj: any = null;
           if (drawMode === "rect") {
-            obj = new fabric.Rect({ left: pointer.x, top: pointer.y, width: 120, height: 80, fill: "transparent", stroke: activeColor, strokeWidth: lineWidth });
+            obj = new Rect({ left: pointer.x, top: pointer.y, width: 120, height: 80, fill: "transparent", stroke: activeColor, strokeWidth: lineWidth });
           } else if (drawMode === "circle") {
-            obj = new fabric.Circle({ left: pointer.x, top: pointer.y, radius: 50, fill: "transparent", stroke: activeColor, strokeWidth: lineWidth });
+            obj = new Circle({ left: pointer.x, top: pointer.y, radius: 50, fill: "transparent", stroke: activeColor, strokeWidth: lineWidth });
           } else if (drawMode === "line") {
-            obj = new fabric.Line([pointer.x, pointer.y, pointer.x + 120, pointer.y], { stroke: activeColor, strokeWidth: lineWidth });
+            obj = new Line([pointer.x, pointer.y, pointer.x + 120, pointer.y], { stroke: activeColor, strokeWidth: lineWidth });
           }
           if (obj) fc.add(obj);
         });
@@ -165,14 +165,15 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
       fc.off("mouse:down");
       fc.on("mouse:down", (opt) => {
         const pointer = fc.getPointer(opt.e);
-        const tb = new fabric.Textbox("Text", {
+        const tb = new Textbox("Text", {
           left: pointer.x,
           top: pointer.y,
           fontSize: fontSize,
           fontFamily: fontFamily,
           fill: activeColor,
         });
-        fc.add(tb).setActiveObject(tb);
+        fc.add(tb);
+        fc.setActiveObject(tb);
       });
     } else if (activeTool === "eraser") {
       fc.isDrawingMode = true;
@@ -195,9 +196,10 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
     const file = e.target.files?.[0];
     if (!file || !fabricRef.current) return;
     const url = URL.createObjectURL(file);
-    fabric.Image.fromURL(url, (img) => {
+    FabricImage.fromURL(url).then((img) => {
       img.set({ left: 100, top: 100, scaleX: 0.5, scaleY: 0.5 });
-      fabricRef.current!.add(img).setActiveObject(img);
+      fabricRef.current!.add(img);
+      fabricRef.current!.setActiveObject(img);
       URL.revokeObjectURL(url);
     });
   };

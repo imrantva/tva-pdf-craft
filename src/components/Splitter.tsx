@@ -31,7 +31,7 @@ export const Splitter = ({ file }: SplitterProps) => {
         const ctx = canvas.getContext("2d")!;
         canvas.width = viewport.width;
         canvas.height = viewport.height;
-        await page.render({ canvasContext: ctx, viewport }).promise;
+        await page.render({ canvasContext: ctx, viewport, canvas }).promise;
         images.push(canvas.toDataURL());
       }
       if (!cancelled) {
@@ -62,7 +62,7 @@ export const Splitter = ({ file }: SplitterProps) => {
       const pages = await out.copyPages(srcDoc, keepIndexes);
       pages.forEach((p) => out.addPage(p));
       const outBytes = await out.save();
-      const blob = new Blob([outBytes], { type: "application/pdf" });
+      const blob = new Blob([outBytes as any], { type: "application/pdf" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = file.name.replace(/\.pdf$/i, "-split.pdf");

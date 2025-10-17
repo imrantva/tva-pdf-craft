@@ -28,7 +28,7 @@ export const Merger = ({ files, onReorder }: MergerProps) => {
         const ctx = canvas.getContext("2d")!;
         canvas.width = viewport.width;
         canvas.height = viewport.height;
-        await page.render({ canvasContext: ctx, viewport }).promise;
+        await page.render({ canvasContext: ctx, viewport, canvas }).promise;
         imgs.push(canvas.toDataURL());
       }
       if (!cancelled) setThumbs(imgs);
@@ -62,7 +62,7 @@ export const Merger = ({ files, onReorder }: MergerProps) => {
         pages.forEach((p) => out.addPage(p));
       }
       const bytes = await out.save();
-      const blob = new Blob([bytes], { type: "application/pdf" });
+      const blob = new Blob([bytes as any], { type: "application/pdf" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = "merged.pdf";

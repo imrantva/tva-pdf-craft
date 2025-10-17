@@ -13,6 +13,7 @@ const Index = () => {
   const [splitterFile, setSplitterFile] = useState<File | null>(null);
   const [mergerFiles, setMergerFiles] = useState<File[]>([]);
   const [activeTool, setActiveTool] = useState<ToolType>(null);
+  const viewerRef = useRef<PDFViewerHandle>(null);
 
   const handleFileUpload = (file: File) => {
     setPdfFile(file);
