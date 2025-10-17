@@ -118,8 +118,11 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
         } else {
           fabricRef.current.clear();
         }
-        fabricRef.current.freeDrawingBrush.width = lineWidth;
-        fabricRef.current.freeDrawingBrush.color = activeTool === "eraser" ? "#ffffff" : activeColor;
+        // Initialize brush properties if available
+        if (fabricRef.current.freeDrawingBrush) {
+          fabricRef.current.freeDrawingBrush.width = lineWidth;
+          fabricRef.current.freeDrawingBrush.color = activeTool === "eraser" ? "#ffffff" : activeColor;
+        }
       }
     };
     renderPage();
@@ -143,8 +146,10 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
     if (activeTool === "draw") {
       if (drawMode === "freehand") {
         fc.isDrawingMode = true;
-        fc.freeDrawingBrush.color = activeColor;
-        fc.freeDrawingBrush.width = lineWidth;
+        if (fc.freeDrawingBrush) {
+          fc.freeDrawingBrush.color = activeColor;
+          fc.freeDrawingBrush.width = lineWidth;
+        }
       } else {
         fc.isDrawingMode = false;
         fc.off("mouse:down");
@@ -177,8 +182,10 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
       });
     } else if (activeTool === "eraser") {
       fc.isDrawingMode = true;
-      fc.freeDrawingBrush.color = "#ffffff";
-      fc.freeDrawingBrush.width = Math.max(8, lineWidth * 3);
+      if (fc.freeDrawingBrush) {
+        fc.freeDrawingBrush.color = "#ffffff";
+        fc.freeDrawingBrush.width = Math.max(8, lineWidth * 3);
+      }
     } else {
       fc.isDrawingMode = false;
       fc.off("mouse:down");
