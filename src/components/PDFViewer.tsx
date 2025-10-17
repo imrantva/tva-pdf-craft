@@ -5,6 +5,7 @@ import { Canvas as FabricCanvas, Rect, Circle, Line, Textbox, FabricImage } from
 import * as pdfjs from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { PDFDocument } from "pdf-lib";
+import { toast } from "sonner";
 import type { ToolType } from "./Toolbar";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl as any;
@@ -269,6 +270,20 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
     }
   }, [activeTool, activeColor, lineWidth, drawMode, fontSize, fontFamily, canvasReady]);
 
+  // Tool activation hints
+  useEffect(() => {
+    if (!activeTool) return;
+    if (activeTool === "text") {
+      toast("Text tool: click on the page to add text. Drag to move.");
+    } else if (activeTool === "draw") {
+      toast("Draw tool: freehand draw anywhere on the page.");
+    } else if (activeTool === "color") {
+      toast("Color tool: select an object, then pick a color.");
+    } else if (activeTool === "eraser") {
+      toast("Eraser: paint with white to hide content.");
+    }
+  }, [activeTool]);
+
   // Handle color changes for selected objects
   useEffect(() => {
     const fc = fabricRef.current;
@@ -340,7 +355,7 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
 
           {/* Pop-up toolbars */}
           {activeTool === "text" && (
-            <div className="absolute top-2 left-2 z-10 flex items-center gap-2 bg-card border border-border rounded px-2 py-1 shadow-sm">
+            <div className="absolute top-2 left-2 z-20 flex items-center gap-2 bg-card border border-border rounded px-2 py-1 shadow-sm">
               <select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} className="bg-background border border-border rounded px-2 py-1 text-sm">
                 <option>Arial</option>
                 <option>Times New Roman</option>
@@ -354,7 +369,7 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
           )}
 
           {activeTool === "draw" && (
-            <div className="absolute top-2 left-2 z-10 flex items-center gap-2 bg-card border border-border rounded px-2 py-1 shadow-sm">
+            <div className="absolute top-2 left-2 z-20 flex items-center gap-2 bg-card border border-border rounded px-2 py-1 shadow-sm">
               <select value={drawMode} onChange={(e) => setDrawMode(e.target.value as any)} className="bg-background border border-border rounded px-2 py-1 text-sm">
                 <option value="freehand">Freehand</option>
                 <option value="rect">Rectangle</option>
@@ -366,7 +381,7 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
           )}
 
           {activeTool === "color" && (
-            <div className="absolute top-2 left-2 z-10 flex items-center gap-2 bg-card border border-border rounded px-3 py-2 shadow-sm">
+            <div className="absolute top-2 left-2 z-20 flex items-center gap-2 bg-card border border-border rounded px-3 py-2 shadow-sm">
               <label className="text-sm font-medium text-foreground">Select Color:</label>
               <input 
                 type="color" 
@@ -379,7 +394,7 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
           )}
 
           {activeTool === "image" && (
-            <div className="absolute top-2 left-2 z-10 flex items-center gap-2 bg-card border border-border rounded px-2 py-1 shadow-sm">
+            <div className="absolute top-2 left-2 z-20 flex items-center gap-2 bg-card border border-border rounded px-2 py-1 shadow-sm">
               <label className="text-sm cursor-pointer">Add Image
                 <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
               </label>
