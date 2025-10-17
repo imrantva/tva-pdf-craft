@@ -94,32 +94,42 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
   // render page
   useEffect(() => {
     const renderPage = async () => {
-      if (!pdfDoc || !baseCanvasRef.current) return;
+      if (!pdfDoc || !baseCanvasRef.current || !overlayRef.current) return;
       const page = await pdfDoc.getPage(currentPage);
       const viewport = page.getViewport({ scale: 1.5 });
+      
+      // Render PDF to base canvas
       const canvas = baseCanvasRef.current;
       const context = canvas.getContext("2d")!;
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       await page.render({ canvasContext: context, viewport, canvas }).promise;
-      // sync overlay size and reinit fabric
-      if (overlayRef.current) {
-        overlayRef.current.width = viewport.width;
-        overlayRef.current.height = viewport.height;
-        
-        // Dispose and recreate Fabric canvas on dimension change
-        if (fabricRef.current) {
-          fabricRef.current.dispose();
-          fabricRef.current = null;
-        }
-        
-        // Create new Fabric canvas
-        fabricRef.current = new FabricCanvas(overlayRef.current, { 
-          selection: true,
-          width: viewport.width,
-          height: viewport.height
-        });
+      
+      // Sync overlay canvas dimensions (both internal and CSS)
+      const overlay = overlayRef.current;
+      overlay.width = viewport.width;
+      overlay.height = viewport.height;
+      overlay.style.width = `${viewport.width}px`;
+      overlay.style.height = `${viewport.height}px`;
+      
+      // Set base canvas CSS size to match
+      canvas.style.width = `${viewport.width}px`;
+      canvas.style.height = `${viewport.height}px`;
+      
+      // Dispose and recreate Fabric canvas on dimension change
+      if (fabricRef.current) {
+        fabricRef.current.dispose();
+        fabricRef.current = null;
       }
+      
+      // Create new Fabric canvas with exact dimensions
+      fabricRef.current = new FabricCanvas(overlay, { 
+        selection: true,
+        width: viewport.width,
+        height: viewport.height,
+        backgroundColor: 'transparent'
+      });
+      
       // load saved JSON for this page
       if (fabricRef.current) {
         const json = pageJSON.current.get(currentPage);
@@ -316,12 +326,13 @@ export const PDFViewer = forwardRef<PDFViewerHandle, PDFViewerProps>(({ file, ac
       <div className="flex-1 bg-muted/20 rounded-lg shadow-inner p-4 overflow-auto">
         <div className="max-w-4xl mx-auto bg-background rounded-lg p-2">
           <div className="relative inline-block">
-            <canvas ref={baseCanvasRef} className="block" />
+            <canvas ref={baseCanvasRef} className="block" style={{ display: 'block' }} />
             <canvas 
               ref={overlayRef} 
               className="absolute top-0 left-0" 
               style={{ 
-                zIndex: 1,
+                zIndex: 10,
+                pointerEvents: 'auto',
                 cursor: activeTool === "draw" ? "crosshair" : activeTool === "text" ? "text" : activeTool === "eraser" ? "cell" : "default"
               }} 
             />
